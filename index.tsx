@@ -1,15 +1,3 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import App from './App';
-
-const rootElement = document.getElementById('root');
-if (!rootElement) {
-  throw new Error("Could not find root element to mount to");
-}
-
-const root = ReactDOM.createRoot(rootElement);
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+// The application has been converted to a standalone HTML file (index.html).
+// This React entry point is disabled to prevent "root element not found" errors.
+console.log("KoraBudget running in Single File Mode.");

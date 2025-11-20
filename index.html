@@ -1,32 +1,758 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>KoraBudget - AI Planner</title>
+    
+    <!-- Styles -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <style>
-      body {
-        font-family: 'Inter', sans-serif;
-        background-color: #f3f4f6;
-      }
-    </style>
-  <script type="importmap">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Import Map for Gemini SDK -->
+    <script type="importmap">
 {
   "imports": {
-    "recharts": "https://aistudiocdn.com/recharts@^3.4.1",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
     "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/"
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "recharts": "https://aistudiocdn.com/recharts@^3.4.1"
   }
 }
 </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* Hide scrollbar for cleaner history list */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+    </style>
 </head>
-  <body>
-    <div id="root"></div>
-  </body>
+<body class="min-h-screen flex flex-col relative">
+
+    <!-- API Key Modal -->
+    <div id="apiKeyModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden">
+        <div class="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4 animate-fade-in">
+            <div class="text-center mb-6">
+                <div class="bg-teal-100 p-3 rounded-full w-16 h-16 mx-auto flex items-center justify-center mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-teal-600">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+                    </svg>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-900">Welcome to KoraBudget</h2>
+                <p class="text-gray-500 mt-2 text-sm">To start generating budgets, please enter your Google Gemini API Key.</p>
+            </div>
+            <form id="apiKeyForm" class="space-y-4">
+                <div>
+                    <label for="apiKeyInput" class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+                    <input type="password" id="apiKeyInput" class="block w-full rounded-lg border-gray-300 bg-gray-50 border p-3 focus:ring-teal-500 focus:border-teal-500 text-sm" placeholder="Paste your key here..." required>
+                    <p class="text-xs text-gray-400 mt-1">Your key is saved locally in your browser.</p>
+                </div>
+                <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-colors">
+                    Save & Continue
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-teal-600 to-emerald-800 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-8 h-8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold tracking-tight">KoraBudget</h1>
+                    <p class="text-teal-100 text-sm">AI-Powered Financial Planning</p>
+                </div>
+            </div>
+            <!-- Settings Button -->
+            <button id="settingsBtn" class="p-2 rounded-full hover:bg-white/10 text-teal-100 hover:text-white transition-colors" title="Update API Key">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.212 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+            
+            <!-- Intro -->
+            <div class="text-center max-w-2xl mx-auto mb-8">
+                <h2 class="text-3xl font-bold text-gray-900 mb-4">Smart Budgeting for Rwanda</h2>
+                <p class="text-lg text-gray-600">
+                    Enter your expenses in plain text. Our AI estimates costs in RWF and builds a weekly & monthly plan for you.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                <!-- Left Column: Input & History -->
+                <div class="lg:col-span-1 space-y-8">
+                    
+                    <!-- Input Form -->
+                    <div class="bg-white rounded-xl shadow-md border border-gray-100 p-6 md:p-8">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-4">Tell us about your spending</h2>
+                        <form id="budgetForm" class="space-y-5">
+                            <div>
+                                <label for="income" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Monthly Income (Optional - in RWF)
+                                </label>
+                                <div class="relative rounded-md shadow-sm">
+                                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                        <span class="text-gray-500 sm:text-sm">RWF</span>
+                                    </div>
+                                    <input type="text" id="income" class="block w-full rounded-md border-gray-300 pl-12 py-3 focus:border-teal-500 focus:ring-teal-500 sm:text-sm bg-gray-50 border text-gray-900" placeholder="e.g. 500,000">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label for="description" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Expected Expenses
+                                </label>
+                                <p class="text-xs text-gray-500 mb-2">
+                                    Describe your habits. Example: "I pay 150k rent, take a moto daily (1k), eat lunch at work (2k), and buy groceries weekly."
+                                </p>
+                                <textarea id="description" rows="5" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm bg-gray-50 border p-3 text-gray-900" placeholder="Type here..." required></textarea>
+                            </div>
+
+                            <button type="submit" id="generateBtn" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-colors duration-200">
+                                Generate Budget
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- History Container (Hidden by default) -->
+                    <div id="historyContainer" class="bg-white rounded-xl shadow-md border border-gray-100 p-6 animate-fade-in hidden">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-xl font-semibold text-gray-800">Saved Budgets</h3>
+                            <span id="savedCount" class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800">0 saved</span>
+                        </div>
+                        <div id="historyList" class="grid grid-cols-1 gap-3 max-h-96 overflow-y-auto pr-1 no-scrollbar">
+                            <!-- History Items Injected Here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Results -->
+                <div class="lg:col-span-2" id="resultsColumn">
+                    
+                    <!-- Empty State -->
+                    <div id="emptyState" class="bg-white rounded-xl p-12 text-center border border-dashed border-gray-300 text-gray-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" class="w-16 h-16 mx-auto mb-4 text-gray-300">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5M9 11.25v1.5M12 9v3.75m3-6v6" />
+                        </svg>
+                        <p class="text-lg">Your budget plan will appear here</p>
+                    </div>
+
+                    <!-- Error State -->
+                    <div id="errorState" class="bg-red-50 border-l-4 border-red-400 p-4 rounded-md hidden">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p id="errorMessage" class="text-sm text-red-700">Error generating budget.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Results Display -->
+                    <div id="resultsContainer" class="space-y-6 animate-fade-in hidden">
+                        
+                        <!-- Toolbar -->
+                        <div class="flex flex-wrap justify-end gap-3 pb-2">
+                            <button id="downloadPdfBtn" class="flex items-center px-4 py-2 rounded-lg text-sm font-medium bg-gray-800 text-white hover:bg-gray-900 transition-colors shadow-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                Download PDF
+                            </button>
+                            <button id="saveBudgetBtn" class="flex items-center px-4 py-2 rounded-lg text-sm font-medium bg-teal-600 text-white hover:bg-teal-700 transition-colors shadow-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M7.707 10.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V6h5a2 2 0 012 2v7a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2h5v5.586l-1.293-1.293zM9 4a1 1 0 012 0v2H9V4z" />
+                                </svg>
+                                <span id="saveBtnText">Save Budget</span>
+                            </button>
+                        </div>
+
+                        <!-- Print Area -->
+                        <div id="budget-print-area" class="space-y-6 p-6 bg-white rounded-xl border border-gray-100 shadow-sm">
+                            
+                            <!-- Report Header -->
+                            <div class="flex justify-between items-center border-b border-gray-100 pb-6">
+                                <div class="flex items-center space-x-3">
+                                    <div class="bg-teal-600 p-2 rounded-lg">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="white" class="w-8 h-8">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h2 class="text-3xl font-bold text-gray-900">KoraBudget</h2>
+                                        <p class="text-sm text-gray-500">Your Personal Finance Plan</p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                     <div class="text-sm font-medium text-gray-500">Generated On</div>
+                                     <div class="text-lg font-bold text-gray-900" id="generatedDate"></div>
+                                </div>
+                            </div>
+
+                            <!-- Summary -->
+                            <div class="bg-teal-50 border border-teal-200 rounded-xl p-6 text-teal-900">
+                                <h3 class="text-lg font-semibold mb-2">Budget Summary</h3>
+                                <p id="summaryText" class="text-teal-800 leading-relaxed"></p>
+                                <div class="mt-4 p-4 bg-white rounded-lg border border-teal-100 shadow-sm">
+                                    <p class="font-bold text-teal-700">💡 Savings Tip:</p>
+                                    <p id="savingsAdviceText" class="text-gray-600 italic"></p>
+                                </div>
+                            </div>
+
+                            <!-- Metrics -->
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
+                                    <span class="text-gray-500 text-sm font-medium uppercase tracking-wider">Weekly Estimate</span>
+                                    <span id="weeklyTotalDisplay" class="text-3xl font-bold text-gray-900 mt-2"></span>
+                                    <span class="text-xs text-gray-400 mt-1">Average spend per week</span>
+                                </div>
+                                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
+                                    <span class="text-gray-500 text-sm font-medium uppercase tracking-wider">Monthly Estimate</span>
+                                    <span id="monthlyTotalDisplay" class="text-3xl font-bold text-emerald-600 mt-2"></span>
+                                    <span class="text-xs text-gray-400 mt-1">Total spend per month</span>
+                                </div>
+                            </div>
+
+                            <!-- Chart and Table -->
+                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <!-- Chart -->
+                                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 lg:col-span-1 min-h-[300px] flex flex-col items-center">
+                                    <h3 class="text-lg font-semibold text-gray-800 mb-4 text-center">Expense Distribution</h3>
+                                    <div class="w-full h-64 relative">
+                                        <canvas id="expenseChart"></canvas>
+                                    </div>
+                                </div>
+
+                                <!-- Table -->
+                                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden lg:col-span-2">
+                                    <div class="px-6 py-4 border-b border-gray-100 bg-gray-50">
+                                        <h3 class="text-lg font-semibold text-gray-800">Detailed Breakdown</h3>
+                                    </div>
+                                    <div class="overflow-x-auto">
+                                        <table class="min-w-full divide-y divide-gray-200">
+                                            <thead class="bg-gray-50">
+                                                <tr>
+                                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
+                                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Est. Cost</th>
+                                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Frequency</th>
+                                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Monthly Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="expensesTableBody" class="bg-white divide-y divide-gray-200">
+                                                <!-- Rows injected via JS -->
+                                            </tbody>
+                                            <tfoot class="bg-gray-50 font-bold">
+                                                <tr>
+                                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900" colspan="4">Total Monthly Expenses</td>
+                                                    <td id="tableTotalFooter" class="px-6 py-4 whitespace-nowrap text-sm text-emerald-700 text-right"></td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Footer -->
+                            <div class="pt-8 mt-8 border-t border-gray-100 text-center">
+                                <p class="text-gray-400 text-sm font-medium uppercase tracking-widest">
+                                    © 2025 KoraBudget Made By Godwin
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-white border-t border-gray-200 mt-auto">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <p class="text-center text-sm text-gray-500">
+                &copy; 2025 KoraBudget. Made By Godwin
+            </p>
+        </div>
+    </footer>
+
+    <!-- Main Application Logic -->
+    <script type="module">
+        import { GoogleGenAI, Type } from "@google/genai";
+
+        // ==========================================
+        // CONFIGURATION
+        // ==========================================
+        
+        const STORAGE_KEY = 'koraBudget_history';
+        const API_KEY_STORAGE = 'gemini_api_key';
+        
+        // State
+        let currentPlan = null;
+        let savedBudgets = [];
+        let chartInstance = null;
+        let isCurrentSaved = false;
+        let userApiKey = localStorage.getItem(API_KEY_STORAGE) || '';
+
+        // DOM Elements
+        const form = document.getElementById('budgetForm');
+        const generateBtn = document.getElementById('generateBtn');
+        const descriptionInput = document.getElementById('description');
+        const incomeInput = document.getElementById('income');
+        
+        const emptyState = document.getElementById('emptyState');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const errorState = document.getElementById('errorState');
+        const errorMessage = document.getElementById('errorMessage');
+        
+        const historyContainer = document.getElementById('historyContainer');
+        const historyList = document.getElementById('historyList');
+        const savedCount = document.getElementById('savedCount');
+        
+        const saveBudgetBtn = document.getElementById('saveBudgetBtn');
+        const saveBtnText = document.getElementById('saveBtnText');
+        const downloadPdfBtn = document.getElementById('downloadPdfBtn');
+        
+        // Modal Elements
+        const apiKeyModal = document.getElementById('apiKeyModal');
+        const apiKeyForm = document.getElementById('apiKeyForm');
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        const settingsBtn = document.getElementById('settingsBtn');
+
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
+        
+        // Load History
+        function loadHistory() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                try {
+                    savedBudgets = JSON.parse(stored);
+                    renderHistory();
+                } catch (e) {
+                    console.error("Failed to load history", e);
+                }
+            }
+        }
+
+        // Check API Key
+        function checkApiKey() {
+            if (!userApiKey) {
+                apiKeyModal.classList.remove('hidden');
+            }
+        }
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadHistory();
+            checkApiKey();
+            document.getElementById('generatedDate').textContent = new Date().toLocaleDateString();
+        });
+
+        // ==========================================
+        // API LOGIC (Gemini)
+        // ==========================================
+
+        async function generateBudgetPlan(userInput, income) {
+            if (!userApiKey) {
+                apiKeyModal.classList.remove('hidden');
+                throw new Error("API Key missing. Please enter it in the settings.");
+            }
+
+            const ai = new GoogleGenAI({ apiKey: userApiKey });
+            const modelId = "gemini-2.5-flash";
+
+            const prompt = `
+                Act as a strict budget calculator for a user in Rwanda.
+                Create a budget plan using ONLY the expenses explicitly mentioned in the user input: "${userInput}".
+                ${income ? `The user has a monthly income of: ${income}` : ''}
+                
+                Strict Rules:
+                1. DO NOT add any expenses that the user did not mention. For example, if the user only says "Rent and Transport", do NOT add "Food" or "Utilities".
+                2. If the user mentions an item without a price (e.g., "I take a moto"), estimate a reasonable cost in RWF for Kigali.
+                3. If the user provides a specific cost, use that exact cost.
+                4. Ensure mathematical accuracy. Calculate monthly totals based on frequency (Daily * 30, Weekly * 4, etc).
+                
+                Return a structured JSON response.
+            `;
+
+            const response = await ai.models.generateContent({
+                model: modelId,
+                contents: prompt,
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            expenses: {
+                                type: Type.ARRAY,
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        category: { type: Type.STRING, description: "Broad category e.g., Food, Transport" },
+                                        item: { type: Type.STRING, description: "Specific item name" },
+                                        estimatedCost: { type: Type.NUMBER, description: "Cost per unit/frequency in RWF" },
+                                        frequency: { type: Type.STRING, description: "Daily, Weekly, Monthly, etc." },
+                                        monthlyTotal: { type: Type.NUMBER, description: "Total calculated cost per month in RWF" },
+                                    },
+                                },
+                            },
+                            totalMonthly: { type: Type.NUMBER, description: "Sum of all monthly totals in RWF" },
+                            totalWeekly: { type: Type.NUMBER, description: "Average weekly spending derived from monthly total" },
+                            savingsAdvice: { type: Type.STRING, description: "Brief advice based strictly on provided data" },
+                            summary: { type: Type.STRING, description: "A short polite summary of the budget" },
+                        },
+                        required: ["expenses", "totalMonthly", "totalWeekly", "savingsAdvice", "summary"],
+                    },
+                },
+            });
+
+            if (!response.text) {
+                throw new Error("No response received from AI");
+            }
+
+            return JSON.parse(response.text);
+        }
+
+        // ==========================================
+        // EVENT HANDLERS
+        // ==========================================
+
+        // API Key Handling
+        apiKeyForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const key = apiKeyInput.value.trim();
+            if (key) {
+                userApiKey = key;
+                localStorage.setItem(API_KEY_STORAGE, key);
+                apiKeyModal.classList.add('hidden');
+            }
+        });
+
+        settingsBtn.addEventListener('click', () => {
+            apiKeyInput.value = userApiKey; // Show current key (masked by password type)
+            apiKeyModal.classList.remove('hidden');
+        });
+
+        // Close modal on click outside (if key exists)
+        apiKeyModal.addEventListener('click', (e) => {
+            if (e.target === apiKeyModal && userApiKey) {
+                apiKeyModal.classList.add('hidden');
+            }
+        });
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const description = descriptionInput.value.trim();
+            const income = incomeInput.value.trim();
+            
+            if (!description) return;
+
+            // UI Loading State
+            setLoading(true);
+            resultsContainer.classList.add('hidden');
+            errorState.classList.add('hidden');
+            emptyState.classList.add('hidden');
+
+            try {
+                const plan = await generateBudgetPlan(description, income);
+                // Recalculate totals here to ensure UI matches exact sum of rows
+                const calculatedMonthlyTotal = plan.expenses.reduce((sum, item) => sum + item.monthlyTotal, 0);
+                plan.totalMonthly = calculatedMonthlyTotal;
+                plan.totalWeekly = calculatedMonthlyTotal / 4;
+
+                currentPlan = plan;
+                isCurrentSaved = false;
+                updateSaveButton();
+                displayBudget(plan);
+                setLoading(false);
+            } catch (err) {
+                console.error(err);
+                setLoading(false);
+                errorState.classList.remove('hidden');
+                
+                if (err.message && err.message.includes('API Key')) {
+                   errorMessage.textContent = "Missing API Key. Click the settings gear in the top right to add it.";
+                } else {
+                   errorMessage.textContent = err.message || "We couldn't generate the budget. Check your connection or API Key.";
+                }
+            }
+        });
+
+        saveBudgetBtn.addEventListener('click', () => {
+            if (!currentPlan || isCurrentSaved) return;
+
+            const newSavedBudget = {
+                id: crypto.randomUUID(),
+                timestamp: Date.now(),
+                plan: currentPlan
+            };
+
+            savedBudgets = [newSavedBudget, ...savedBudgets];
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(savedBudgets));
+            
+            isCurrentSaved = true;
+            updateSaveButton();
+            renderHistory();
+        });
+
+        downloadPdfBtn.addEventListener('click', async () => {
+            const btnOriginalText = downloadPdfBtn.innerHTML;
+            downloadPdfBtn.disabled = true;
+            downloadPdfBtn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Processing...`;
+
+            try {
+                const element = document.getElementById('budget-print-area');
+                const canvas = await window.html2canvas(element, {
+                    scale: 2,
+                    useCORS: true,
+                    logging: false,
+                    backgroundColor: '#ffffff'
+                });
+
+                const imgData = canvas.toDataURL('image/png');
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+                const imgWidth = 210;
+                const pageHeight = 297;
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                
+                pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+                pdf.save('KoraBudget_Plan.pdf');
+
+            } catch (error) {
+                console.error("PDF Gen Error", error);
+                alert("Could not generate PDF.");
+            } finally {
+                downloadPdfBtn.disabled = false;
+                downloadPdfBtn.innerHTML = btnOriginalText;
+            }
+        });
+
+        // ==========================================
+        // RENDER LOGIC
+        // ==========================================
+
+        function setLoading(isLoading) {
+            if (isLoading) {
+                generateBtn.disabled = true;
+                generateBtn.innerHTML = `<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Analyzing Finances...`;
+                generateBtn.classList.add('bg-teal-400', 'cursor-not-allowed');
+                generateBtn.classList.remove('bg-teal-600', 'hover:bg-teal-700');
+            } else {
+                generateBtn.disabled = false;
+                generateBtn.textContent = "Generate Budget";
+                generateBtn.classList.remove('bg-teal-400', 'cursor-not-allowed');
+                generateBtn.classList.add('bg-teal-600', 'hover:bg-teal-700');
+            }
+        }
+
+        function formatRWF(amount) {
+            return new Intl.NumberFormat('rw-RW', { style: 'currency', currency: 'RWF', maximumFractionDigits: 0 }).format(amount);
+        }
+
+        function displayBudget(plan) {
+            // Populate Text
+            document.getElementById('summaryText').textContent = plan.summary;
+            document.getElementById('savingsAdviceText').textContent = plan.savingsAdvice;
+            document.getElementById('weeklyTotalDisplay').textContent = formatRWF(plan.totalWeekly);
+            document.getElementById('monthlyTotalDisplay').textContent = formatRWF(plan.totalMonthly);
+            
+            // Populate Table
+            const tbody = document.getElementById('expensesTableBody');
+            tbody.innerHTML = '';
+            
+            plan.expenses.forEach(expense => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50 transition-colors';
+                
+                // Badge color logic
+                let badgeClass = 'bg-green-100 text-green-800';
+                if (expense.frequency.toLowerCase().includes('day')) badgeClass = 'bg-blue-100 text-blue-800';
+                if (expense.frequency.toLowerCase().includes('week')) badgeClass = 'bg-purple-100 text-purple-800';
+
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">${expense.category}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${expense.item}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatRWF(expense.estimatedCost)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${badgeClass}">${expense.frequency}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-bold text-right">${formatRWF(expense.monthlyTotal)}</td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            document.getElementById('tableTotalFooter').textContent = formatRWF(plan.totalMonthly);
+            document.getElementById('generatedDate').textContent = new Date().toLocaleDateString();
+
+            // Show container
+            resultsContainer.classList.remove('hidden');
+            
+            // Scroll to results
+            resultsContainer.scrollIntoView({ behavior: 'smooth' });
+
+            // Render Chart
+            renderChart(plan.expenses);
+        }
+
+        function renderChart(expenses) {
+            const ctx = document.getElementById('expenseChart').getContext('2d');
+            
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            // Aggregate data by category
+            const categoryMap = {};
+            expenses.forEach(exp => {
+                if (categoryMap[exp.category]) {
+                    categoryMap[exp.category] += exp.monthlyTotal;
+                } else {
+                    categoryMap[exp.category] = exp.monthlyTotal;
+                }
+            });
+
+            const labels = Object.keys(categoryMap);
+            const data = Object.values(categoryMap);
+
+            chartInstance = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: [
+                            '#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateSaveButton() {
+            if (isCurrentSaved) {
+                saveBudgetBtn.className = "flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm bg-teal-100 text-teal-800 cursor-default border border-teal-200";
+                saveBtnText.textContent = "Saved to History";
+                saveBudgetBtn.disabled = true;
+            } else {
+                saveBudgetBtn.className = "flex items-center px-4 py-2 rounded-lg text-sm font-medium bg-teal-600 text-white hover:bg-teal-700 transition-colors shadow-sm";
+                saveBtnText.textContent = "Save Budget";
+                saveBudgetBtn.disabled = false;
+            }
+        }
+
+        function renderHistory() {
+            savedCount.textContent = `${savedBudgets.length} saved`;
+            historyList.innerHTML = '';
+            
+            if (savedBudgets.length > 0) {
+                historyContainer.classList.remove('hidden');
+            } else {
+                historyContainer.classList.add('hidden');
+                return;
+            }
+
+            savedBudgets.forEach(budget => {
+                const div = document.createElement('div');
+                div.className = "group flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-teal-300 hover:bg-teal-50 transition-all duration-200";
+                
+                const dateStr = new Date(budget.timestamp).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+                const summaryShort = budget.plan.summary.substring(0, 50) + "...";
+                
+                div.innerHTML = `
+                    <div class="flex-grow cursor-pointer">
+                      <div class="flex justify-between items-start">
+                        <div>
+                           <p class="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">${dateStr}</p>
+                           <p class="text-sm text-gray-700 line-clamp-1">${summaryShort}</p>
+                        </div>
+                        <p class="font-bold text-teal-700 text-lg ml-4 whitespace-nowrap">${formatRWF(budget.plan.totalMonthly)}</p>
+                      </div>
+                    </div>
+                    <button class="ml-4 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 delete-btn">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                      </svg>
+                    </button>
+                `;
+
+                // Add Click Listeners
+                const mainArea = div.querySelector('div.flex-grow');
+                mainArea.addEventListener('click', () => {
+                    currentPlan = budget.plan;
+                    isCurrentSaved = true;
+                    updateSaveButton();
+                    displayBudget(budget.plan);
+                });
+
+                const deleteBtn = div.querySelector('.delete-btn');
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const confirmDelete = confirm("Delete this budget?");
+                    if (confirmDelete) {
+                        savedBudgets = savedBudgets.filter(b => b.id !== budget.id);
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(savedBudgets));
+                        renderHistory();
+                    }
+                });
+
+                historyList.appendChild(div);
+            });
+        }
+
+    </script>
+</body>
 </html>
