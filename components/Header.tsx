@@ -11,7 +11,7 @@ export const Header: React.FC = () => {
             </svg>
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">KigaliBudget</h1>
+            <h1 className="text-2xl font-bold tracking-tight">KoraBudget</h1>
             <p className="text-teal-100 text-sm">AI-Powered Financial Planning</p>
           </div>
         </div>

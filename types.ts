@@ -20,3 +20,9 @@ export enum LoadingState {
   SUCCESS = 'SUCCESS',
   ERROR = 'ERROR',
 }
+
+export interface SavedBudget {
+  id: string;
+  timestamp: number;
+  plan: BudgetPlan;
+}

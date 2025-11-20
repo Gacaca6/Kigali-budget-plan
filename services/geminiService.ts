@@ -12,14 +12,17 @@ export const generateBudgetPlan = async (userInput: string, income?: string): Pr
   const modelId = "gemini-2.5-flash";
 
   const prompt = `
-    Act as a financial expert for a user living in Rwanda. 
-    Create a budget based on the following user input: "${userInput}".
+    Act as a strict budget calculator for a user in Rwanda.
+    Create a budget plan using ONLY the expenses explicitly mentioned in the user input: "${userInput}".
     ${income ? `The user has a monthly income of: ${income}` : ''}
     
-    Context:
-    - All currency must be in Rwandan Francs (RWF).
-    - If the user is vague (e.g., "I take a moto to work"), estimate reasonable market rates for Kigali.
-    - Return a structured JSON response.
+    Strict Rules:
+    1. DO NOT add any expenses that the user did not mention. For example, if the user only says "Rent and Transport", do NOT add "Food" or "Utilities".
+    2. If the user mentions an item without a price (e.g., "I take a moto"), estimate a reasonable cost in RWF for Kigali.
+    3. If the user provides a specific cost, use that exact cost.
+    4. Ensure mathematical accuracy. Calculate monthly totals based on frequency (Daily * 30, Weekly * 4, etc).
+    
+    Return a structured JSON response.
   `;
 
   const response = await ai.models.generateContent({
@@ -45,7 +48,7 @@ export const generateBudgetPlan = async (userInput: string, income?: string): Pr
           },
           totalMonthly: { type: Type.NUMBER, description: "Sum of all monthly totals in RWF" },
           totalWeekly: { type: Type.NUMBER, description: "Average weekly spending derived from monthly total" },
-          savingsAdvice: { type: Type.STRING, description: "Brief advice on how to save based on this profile" },
+          savingsAdvice: { type: Type.STRING, description: "Brief advice based strictly on provided data" },
           summary: { type: Type.STRING, description: "A short polite summary of the budget" },
         },
         required: ["expenses", "totalMonthly", "totalWeekly", "savingsAdvice", "summary"],
