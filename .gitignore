@@ -8,6 +8,10 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+artifacts
+test-results
+playwright-report
+*.tsbuildinfo
 dist
 dist-ssr
 *.local
