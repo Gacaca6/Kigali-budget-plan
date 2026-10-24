@@ -31,8 +31,10 @@ Preview: http://localhost:4173. Serve `dist/` over HTTPS to install on a physica
 - Simple planned costs, with optional quantities, custom dates, recurring intervals and exclusions. Monthly dates preserve the anchor day, clamping to the last day in shorter months.
 - Monthly and yearly views; income, expense and transfer history; savings goals; JSON backup/restore; monthly CSV export.
 - Separate editable amounts within a planned cost, such as outbound and return fares. Record each trip or the whole day; overspending on one trip leaves the other trip's planned fare intact.
+- Each cost shows its selected weekdays. Use **Edit amount & days** to add or remove days later; monthly totals update immediately while recorded transactions remain unchanged.
 - Add unexpected income directly from Home, then edit it in Activity. One-off receipts do not repeat in future months.
 - Fixed header and navigation, full-width phone and installed-app layouts, iPhone safe-area padding, and keyboard-aware transaction sheets.
+- Reopen **Build a budget** from Home or Budget at any time, including after deleting costs. Three guided steps offer student, work, changing-income and custom starting points, calculate separate fares and meals on chosen weekdays, and review monthly costs before saving. New plans add items without replacing transactions, wallets or goals. Guided costs apply only to the chosen month; an expected payment is added once and can cover multiple months. Review explicitly selects the app-wide received/expected planning mode.
 - Green wallet branding throughout, including SVG favicon, Apple touch icon, normal PWA icons and a maskable Android icon.
 - A wallet splash screen, local Lottie illustrations and save feedback, gentle sheet/page transitions and tactile buttons. Reduced-motion preferences disable transitions and show static animation frames. The landing page has no secondary marketing subtitles.
 

@@ -38,7 +38,7 @@ export function DayPicker({
             )
           }
         >
-          {weekdayLabels[n][0]}
+          {weekdayLabels[n]}
         </button>
       ))}
     </div>
@@ -138,7 +138,7 @@ export function ScheduleFields({
       )}
       {value.frequency === "days" && (
         <div>
-          <p className="field-caption">Repeat on</p>
+          <p className="field-caption">Choose the days of the week</p>
           <DayPicker
             days={value.weekdays}
             setDays={(weekdays) => set({ weekdays })}

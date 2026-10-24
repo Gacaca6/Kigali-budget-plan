@@ -110,7 +110,36 @@ export function sortedEntries(data: Snapshot, month: string) {
         b.date.localeCompare(a.date) || (b.createdAt || 0) - (a.createdAt || 0),
     );
 }
+function BudgetGuide({
+  onBuild,
+  empty,
+}: {
+  onBuild: () => void;
+  empty: boolean;
+}) {
+  return (
+    <section className={`budget-guide ${empty ? "needs-plan" : ""}`}>
+      <div>
+        <b>
+          {empty
+            ? "No costs planned for this month yet"
+            : "Planning a new month?"}
+        </b>
+        <p>
+          {empty
+            ? "Deleted a plan? You can build it again here. Choose your money, transport, meals and other costs. Your recorded money stays saved."
+            : "Use the guide again, or edit any amount in Budget."}
+        </p>
+      </div>
+      <button className="primary" onClick={onBuild}>
+        <Plus size={17} />
+        Build a budget
+      </button>
+    </section>
+  );
+}
 type OverviewProps = {
+  onBuild: () => void;
   data: Snapshot;
   month: string;
   onRecord: () => void;
@@ -126,6 +155,7 @@ type OverviewProps = {
   setHidden: (b: boolean) => void;
 };
 export function HomePage({
+  onBuild,
   data,
   month,
   onRecord,
@@ -146,6 +176,7 @@ export function HomePage({
     entries = sortedEntries(data, month);
   return (
     <>
+      <BudgetGuide onBuild={onBuild} empty={!rules.length} />
       <section className="actual-balance">
         <span>
           <ShieldCheck size={15} />
@@ -259,13 +290,13 @@ export function HomePage({
         <div>
           <b>
             {p.sources.length
-              ? "Every income has its own rhythm."
-              : "A plan that grows with you."}
+              ? "A little check-in goes a long way."
+              : "Start with the money you have."}
           </b>
           <p>
             {p.sources.length
-              ? `${p.sources.length} income ${p.sources.length === 1 ? "source" : "sources"}, one clear picture. Received payments replace matching expectations; extra income adds to your plan.`
-              : "Add a salary, side hustle, support, or any other source in Budget. Record income whenever it arrives."}
+              ? "Record money when it arrives. Add what you spend each day. Check your plan once a week and change amounts when life changes."
+              : "Cash, mobile money, sales, a salary or support from home all count. A plan helps you see what you need before spending."}
           </p>
           <button className="text-button" onClick={onPlanning}>
             Planning preferences
@@ -360,6 +391,7 @@ export function HomePage({
   );
 }
 export function BudgetPage({
+  onBuild,
   data,
   month,
   onMonth,
@@ -369,6 +401,7 @@ export function BudgetPage({
   onCategories,
   onDelete,
 }: {
+  onBuild: () => void;
   data: Snapshot;
   month: string;
   onMonth: (m: string) => void;
@@ -385,6 +418,10 @@ export function BudgetPage({
     total = rows.reduce((a, r) => a + r.planned, 0);
   return (
     <>
+      <BudgetGuide
+        onBuild={onBuild}
+        empty={!data.rules.some((r) => ruleDates(r, month).length)}
+      />
       <div className="segmented view-toggle">
         <button
           className={!yearly ? "active" : ""}
@@ -577,6 +614,16 @@ export function BudgetPage({
                     <b>{r.name}</b>
                     <small>
                       {r.category} · {scheduleLabel(r)}
+                      {r.frequency === "days" &&
+                        ` · ${[1, 2, 3, 4, 5, 6, 0]
+                          .filter((day) => r.weekdays.includes(day))
+                          .map(
+                            (day) =>
+                              ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][
+                                day
+                              ],
+                          )
+                          .join(", ")}`}
                     </small>
                   </div>
                   <button
@@ -616,7 +663,7 @@ export function BudgetPage({
                 )}
                 <div className="rule-footer">
                   <button onClick={() => onRule(r)}>
-                    Edit schedule
+                    Edit amount & days
                     <ArrowUpRight size={13} />
                   </button>
                   <button

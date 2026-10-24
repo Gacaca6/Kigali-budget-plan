@@ -1,4 +1,94 @@
 import { test, expect, type Page } from "@playwright/test";
+test("guided budget can be rebuilt after deletion without losing recorded money", async ({
+  page,
+  context,
+}) => {
+  test.setTimeout(120000);
+  await blank(page);
+  await page.getByRole("button", { name: "Add unexpected income" }).click();
+  await page.getByLabel("Amount", { exact: true }).fill("80000");
+  await page.getByLabel("Note (optional)").fill("Money already received");
+  await page.getByRole("button", { name: "Save transaction" }).click();
+  await page
+    .getByRole("button", { name: "Build a budget", exact: true })
+    .click();
+  await expect(page.getByRole("button", { name: /^Student/ })).toBeVisible();
+  await page.getByRole("button", { name: "Next: my money & costs" }).click();
+  await page.setViewportSize({ width: 320, height: 568 });
+  expect(
+    await page
+      .getByRole("dialog")
+      .evaluate((el) => el.scrollWidth <= el.clientWidth),
+  ).toBe(true);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByLabel("Going there", { exact: true }).fill("500");
+  await page.getByLabel("Coming back", { exact: true }).fill("800");
+  await page.getByLabel("Food for one day", { exact: true }).fill("1000");
+  await page.getByRole("button", { name: "Review my budget" }).click();
+  await expect(page.locator(".builder-total")).toContainText("50,600");
+  await page.getByRole("button", { name: "Back: change my answers" }).click();
+  await expect(page.getByLabel("Coming back", { exact: true })).toHaveValue(
+    "800",
+  );
+  await page.getByRole("button", { name: "Review my budget" }).click();
+  await page.getByRole("button", { name: "Save this budget" }).click();
+  await expect(page.locator(".rule-card")).toHaveCount(2);
+  for (const name of ["Transport", "Meals"]) {
+    await page
+      .getByRole("button", { name: `Delete ${name}`, exact: true })
+      .click();
+    await page.getByRole("button", { name: "Remove item" }).click();
+  }
+  await expect(
+    page.getByText("No costs planned for this month yet"),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Build a budget", exact: true })
+    .click();
+  await page.getByRole("button", { name: /^Income changes/ }).click();
+  await page.getByRole("button", { name: "Next: my money & costs" }).click();
+  await page.getByRole("button", { name: "Review my budget" }).click();
+  await expect(page.getByRole("alert")).toContainText("at least one cost");
+  await page.getByLabel("Another cost (optional)").fill("Business stock");
+  await page.getByLabel("Amount for that cost this month").fill("10000");
+  await page.getByRole("button", { name: "Review my budget" }).click();
+  await page.getByRole("button", { name: "Save this budget" }).click();
+  await expect(page.locator(".rule-card")).toHaveCount(1);
+  await expect(page.locator(".rule-card")).toContainText("Business stock");
+  await page.getByRole("button", { name: "Home", exact: true }).click();
+  await expect(page.locator(".actual-balance")).toContainText("80,000");
+  await expect(page.locator(".hero-amount")).toContainText("70,000");
+  await page.getByRole("button", { name: "Activity", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: /^Money already received/ }),
+  ).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => !!navigator.serviceWorker.controller))
+    .toBe(true);
+  await context.setOffline(true);
+  await page.reload();
+  await page
+    .getByRole("button", { name: "Build a budget", exact: true })
+    .click();
+  await page.getByRole("button", { name: /^My own plan/ }).click();
+  await page.getByLabel("Month to plan").fill("2026-11");
+  await page.getByRole("button", { name: "Next: my money & costs" }).click();
+  await page
+    .getByLabel("Where will the money come from?")
+    .fill("Family support");
+  await page.getByLabel("Expected payment", { exact: true }).fill("80000");
+  await page.getByLabel("How long must this payment last?").selectOption("2");
+  await page.getByLabel("Rent this month").fill("20000");
+  await page.getByRole("button", { name: "Review my budget" }).click();
+  await expect(page.locator(".builder-review")).toContainText("40,000");
+  await page.getByRole("button", { name: /^Expected income/ }).click();
+  await page.screenshot({ path: "artifacts/budget-builder-review.png" });
+  await page.getByRole("button", { name: "Save this budget" }).click();
+  await expect(page.locator(".rule-card")).toHaveCount(2);
+  await page.getByRole("button", { name: "Home", exact: true }).click();
+  await expect(page.locator(".actual-balance")).toContainText("80,000");
+  await expect(page.locator(".hero-amount")).toContainText("20,000");
+});
 test("different fares, per-trip spending, editable prices and unexpected income", async ({
   page,
 }) => {
@@ -58,6 +148,26 @@ test("different fares, per-trip spending, editable prices and unexpected income"
     path: "artifacts/different-fares-home.png",
     fullPage: true,
   });
+  await page.getByRole("button", { name: "Budget", exact: true }).click();
+  await page.getByRole("button", { name: "Edit amount & days" }).click();
+  await page.getByRole("button", { name: "Fri", exact: true }).click();
+  await expect(page.locator(".calculation")).toContainText("25,500");
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.locator(".rule-card")).toContainText("Mon, Tue, Wed, Thu");
+  await page.getByRole("button", { name: "Home", exact: true }).click();
+  await expect(page.locator(".hero-amount")).toContainText("19,300");
+  await expect(page.locator(".actual-balance")).toContainText("43,500");
+  await page.getByRole("button", { name: "Budget", exact: true }).click();
+  await page.getByRole("button", { name: "Edit Commute" }).click();
+  await expect(
+    page.getByRole("button", { name: "Fri", exact: true }),
+  ).toHaveAttribute("aria-pressed", "false");
+  await page.getByRole("button", { name: "Sat", exact: true }).click();
+  await expect(page.locator(".calculation")).toContainText("33,000");
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await page.getByRole("button", { name: "Home", exact: true }).click();
+  await expect(page.locator(".hero-amount")).toContainText("11,800");
+  await expect(page.locator(".actual-balance")).toContainText("43,500");
 });
 test("header and bottom bar stay fixed and mobile screens fill edge to edge", async ({
   page,

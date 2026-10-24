@@ -43,6 +43,7 @@ import {
   WalletForm,
 } from "./components/Forms";
 import { RuleForm } from "./components/RuleForm";
+import { BudgetBuilder } from "./components/BudgetBuilder";
 import {
   ActivityPage,
   BudgetPage,
@@ -58,7 +59,10 @@ type Modal =
   | { kind: "goal"; goal?: Goal }
   | { kind: "source"; source?: IncomeSource }
   | { kind: "wallet"; wallet?: WalletType }
-  | { kind: "planning" | "settings" | "wallets" | "categories" | "help" }
+  | {
+      kind:
+        "builder" | "planning" | "settings" | "wallets" | "categories" | "help";
+    }
   | { kind: "restore"; backup: Backup }
   | {
       kind: "delete";
@@ -374,6 +378,7 @@ export default function App() {
         )}
         {tab === "Home" && (
           <HomePage
+            onBuild={() => setModal({ kind: "builder" })}
             data={data}
             month={month}
             hidden={hidden}
@@ -393,6 +398,7 @@ export default function App() {
         )}
         {tab === "Budget" && (
           <BudgetPage
+            onBuild={() => setModal({ kind: "builder" })}
             data={data}
             month={month}
             onMonth={setMonth}
@@ -473,40 +479,53 @@ export default function App() {
       {modal && (
         <Sheet
           title={
-            modal.kind === "rule"
-              ? modal.rule
-                ? "Fine-tune your plan"
-                : "Plan a little ahead"
-              : modal.kind === "entry"
-                ? "A little money move"
-                : modal.kind === "goal"
-                  ? modal.goal
-                    ? "A step closer"
-                    : "What’s your next goal?"
-                  : modal.kind === "source"
-                    ? modal.source
-                      ? "Edit income source"
-                      : "Add an income source"
-                    : modal.kind === "wallet"
-                      ? modal.wallet
-                        ? "Edit your wallet"
-                        : "Add a wallet"
-                      : modal.kind === "wallets"
-                        ? "Your pockets"
-                        : modal.kind === "categories"
-                          ? "Your categories"
-                          : modal.kind === "planning"
-                            ? "Your planning preferences"
-                            : modal.kind === "settings"
-                              ? "Make yourself at home"
-                              : modal.kind === "help"
-                                ? "A little clarity"
-                                : modal.kind === "restore"
-                                  ? "Restore your budget?"
-                                  : "Remove this item?"
+            modal.kind === "builder"
+              ? "Build a budget"
+              : modal.kind === "rule"
+                ? modal.rule
+                  ? "Fine-tune your plan"
+                  : "Plan a little ahead"
+                : modal.kind === "entry"
+                  ? "A little money move"
+                  : modal.kind === "goal"
+                    ? modal.goal
+                      ? "A step closer"
+                      : "What’s your next goal?"
+                    : modal.kind === "source"
+                      ? modal.source
+                        ? "Edit income source"
+                        : "Add an income source"
+                      : modal.kind === "wallet"
+                        ? modal.wallet
+                          ? "Edit your wallet"
+                          : "Add a wallet"
+                        : modal.kind === "wallets"
+                          ? "Your pockets"
+                          : modal.kind === "categories"
+                            ? "Your categories"
+                            : modal.kind === "planning"
+                              ? "Your planning preferences"
+                              : modal.kind === "settings"
+                                ? "Make yourself at home"
+                                : modal.kind === "help"
+                                  ? "A little clarity"
+                                  : modal.kind === "restore"
+                                    ? "Restore your budget?"
+                                    : "Remove this item?"
           }
           onClose={close}
         >
+          {modal.kind === "builder" && (
+            <BudgetBuilder
+              data={data}
+              month={month}
+              onDone={(selectedMonth) => {
+                setMonth(selectedMonth);
+                navigate("Budget");
+                done();
+              }}
+            />
+          )}
           {modal.kind === "rule" && (
             <RuleForm
               rule={modal.rule}

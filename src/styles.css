@@ -1527,7 +1527,9 @@ button:active:not(:disabled) {
   background: #fff;
   color: #a0a994;
   border-radius: 12px;
-  min-width: 32px;
+  min-width: 0;
+  padding-left: 0;
+  padding-right: 0;
   height: 42px;
   flex: 1;
   font-size: 12px;
@@ -2250,6 +2252,70 @@ body {
   padding-left: max(25px, env(safe-area-inset-left, 0px));
   padding-right: max(25px, env(safe-area-inset-right, 0px));
   padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+}
+.budget-guide {
+  border: 1px solid #dce7ce;
+  background: #eaf1de;
+  border-radius: 20px;
+  padding: 19px;
+  margin-bottom: 22px;
+}
+.budget-guide b {
+  font-size: 15px;
+  color: #123d30;
+}
+.budget-guide p {
+  font-size: 12px;
+  line-height: 1.7;
+  color: #526c40;
+  margin: 8px 0 14px;
+}
+.budget-guide .primary {
+  width: 100%;
+  min-height: 44px;
+}
+.builder-progress {
+  font-size: 11px;
+  color: #526c40;
+  margin: 0;
+}
+.builder-heading {
+  font-size: 21px;
+  line-height: 1.4;
+  margin: 0;
+  scroll-margin-top: 15px;
+}
+.builder-choices {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+.builder-choices button {
+  text-align: left;
+  min-height: 72px;
+}
+.builder-choices small {
+  display: block;
+  line-height: 1.6;
+  margin-top: 6px;
+}
+.builder-review {
+  background: #edf2e6;
+  border-radius: 18px;
+  padding: 4px 16px;
+}
+.builder-review p {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.builder-review b {
+  white-space: nowrap;
+}
+.builder-total {
+  border-top: 1px solid #dce7ce;
+  padding-top: 14px;
 }
 .cost-parts {
   display: flex;
