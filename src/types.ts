@@ -69,6 +69,13 @@ export interface Rule extends Schedule {
   category: Category;
   amount: number;
   units: number;
+  parts?: CostPart[];
+}
+export interface CostPart {
+  id: string;
+  name: string;
+  amount: number;
+  units: number;
 }
 export interface Wallet {
   id: string;
@@ -87,6 +94,7 @@ export interface Entry {
   walletId: string;
   toWalletId?: string;
   ruleId?: string;
+  partId?: string;
   sourceId?: string;
   needsSourceReview?: boolean;
   budgetMonth?: string;

@@ -82,7 +82,12 @@ export function ruleDates(s: Schedule, month: string) {
   return datesInMonth(month).filter((date) => appliesOn(s, date));
 }
 export function ruleTotal(rule: Rule, month: string) {
-  return ruleDates(rule, month).length * rule.amount * rule.units;
+  return ruleDates(rule, month).length * occurrenceCost(rule);
+}
+export function occurrenceCost(rule: Rule) {
+  return rule.parts?.length
+    ? rule.parts.reduce((sum, part) => sum + part.amount * part.units, 0)
+    : rule.amount * rule.units;
 }
 export function expectedReceipt(source: IncomeSource, month: string) {
   return ruleDates(source, month).length * source.amount;
@@ -140,16 +145,32 @@ export function forecast(rules: Rule[], entries: Entry[], month: string) {
     if (e.type !== "expense" || !e.date.startsWith(month)) continue;
     total += e.amount;
     if (e.ruleId) {
-      const key = `${e.ruleId}/${e.date}`;
+      const aggregate = `${e.ruleId}/${e.date}`;
+      linked.set(aggregate, (linked.get(aggregate) || 0) + e.amount);
+      const key = `${e.ruleId}/${e.date}/${e.partId || ""}`;
       linked.set(key, (linked.get(key) || 0) + e.amount);
     }
   }
   for (const r of rules)
-    for (const date of ruleDates(r, month))
-      total += Math.max(
-        0,
-        r.amount * r.units - (linked.get(`${r.id}/${date}`) || 0),
-      );
+    for (const date of ruleDates(r, month)) {
+      const key = `${r.id}/${date}/`;
+      if (r.parts?.length) {
+        const unspent = r.parts.reduce(
+          (sum, part) =>
+            sum +
+            Math.max(
+              0,
+              part.amount * part.units - (linked.get(key + part.id) || 0),
+            ),
+          0,
+        );
+        total += Math.max(0, unspent - (linked.get(key) || 0));
+      } else
+        total += Math.max(
+          0,
+          occurrenceCost(r) - (linked.get(`${r.id}/${date}`) || 0),
+        );
+    }
   return total;
 }
 export function budgetSummary(data: Snapshot, month: string) {

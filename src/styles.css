@@ -1,8 +1,8 @@
-/* A single phone canvas, at every viewport width. All fonts ship with the app. */
+/* One mobile column, with edge-to-edge installed mode and iOS safe areas. */
 :root {
   font-family: "DM Sans", sans-serif;
   color: #20382e;
-  background: #e9ede7;
+  background: #f7f8f4;
   font-synthesis: none;
   font-weight: 400;
   font-size: 14px;
@@ -14,6 +14,7 @@
   --paper: #f7f8f4;
   --radius: 22px;
 }
+
 * {
   box-sizing: border-box;
 }
@@ -2165,4 +2166,156 @@ button:active:not(:disabled) {
 .icon-button {
   width: 44px;
   height: 44px;
+}
+
+html,
+body,
+#root,
+.app-entry {
+  width: 100%;
+  min-height: 100%;
+  background: #f7f8f4;
+}
+html {
+  min-height: 100%;
+  -webkit-text-size-adjust: 100%;
+  color-scheme: light;
+}
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: env(safe-area-inset-top, 0px);
+  background: #123d30;
+  z-index: 60;
+  pointer-events: none;
+}
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+.app-shell {
+  width: 100%;
+  max-width: none;
+  min-height: 100vh;
+  min-height: 100svh;
+  min-height: 100dvh;
+  box-shadow: none;
+}
+.app-shell.app-active {
+  --header-height: calc(82px + env(safe-area-inset-top, 0px));
+  padding-top: var(--header-height);
+}
+.app-active > .app-header {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  width: 100%;
+  max-width: none;
+  height: var(--header-height);
+  padding: calc(24px + env(safe-area-inset-top, 0px))
+    max(24px, env(safe-area-inset-right, 0px)) 21px
+    max(24px, env(safe-area-inset-left, 0px));
+  background: #f7f8f4f2;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-bottom: 1px solid #e6eadf;
+}
+.main-content {
+  padding-left: max(23px, env(safe-area-inset-left, 0px));
+  padding-right: max(23px, env(safe-area-inset-right, 0px));
+  padding-bottom: calc(118px + env(safe-area-inset-bottom, 0px));
+}
+.bottom-nav {
+  max-width: none;
+  padding-left: max(15px, env(safe-area-inset-left, 0px));
+  padding-right: max(15px, env(safe-area-inset-right, 0px));
+  background: #f7f8f4f2;
+}
+.splash-screen {
+  max-width: none;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+.sheet {
+  max-width: 600px;
+  max-height: calc(var(--visible-height, 100dvh) - 16px);
+  bottom: var(--keyboard-inset, 0px);
+}
+.onboarding {
+  padding-left: max(25px, env(safe-area-inset-left, 0px));
+  padding-right: max(25px, env(safe-area-inset-right, 0px));
+  padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+}
+.cost-parts {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.cost-part {
+  background: #edf2e6;
+  border: 1px solid #dfe7d3;
+  border-radius: 16px;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+.part-breakdown {
+  border-top: 1px solid var(--line);
+  padding: 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.part-breakdown > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 11px;
+  color: #8a977a;
+}
+.part-breakdown b {
+  font-weight: 500;
+  color: #526c40;
+  overflow-wrap: anywhere;
+}
+.income-shortcut {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: #eaf1de;
+  border: 1px solid #dce7ce;
+  padding: 14px 16px;
+  border-radius: 15px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4f7139;
+  margin: -7px 0 22px;
+}
+.income-shortcut > span {
+  flex: 1;
+  text-align: left;
+}
+@media (min-width: 1024px) and (pointer: fine) {
+  .app-shell,
+  .app-active > .app-header,
+  .bottom-nav,
+  .splash-screen {
+    max-width: 480px;
+  }
+}
+@media (display-mode: standalone) {
+  .app-shell,
+  .app-active > .app-header,
+  .bottom-nav,
+  .splash-screen {
+    width: 100%;
+    max-width: none;
+  }
 }

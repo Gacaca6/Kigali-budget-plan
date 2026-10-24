@@ -21,6 +21,7 @@ import {
   monthLabel,
   ruleDates,
   ruleTotal,
+  occurrenceCost,
   scheduleLabel,
   sourceAllocation,
   spending,
@@ -113,6 +114,7 @@ type OverviewProps = {
   data: Snapshot;
   month: string;
   onRecord: () => void;
+  onUnexpected: () => void;
   onRule: (r?: Rule) => void;
   onGoal: () => void;
   onBudget: () => void;
@@ -127,6 +129,7 @@ export function HomePage({
   data,
   month,
   onRecord,
+  onUnexpected,
   onRule,
   onGoal,
   onBudget,
@@ -244,6 +247,11 @@ export function HomePage({
           Set a goal
         </button>
       </div>
+      <button className="income-shortcut" onClick={onUnexpected}>
+        <ArrowDownLeft size={17} />
+        <span>Add unexpected income</span>
+        <Plus size={16} />
+      </button>
       <section className="insight-card">
         <span className="insight-icon">
           <Sparkles size={19} />
@@ -581,7 +589,10 @@ export function BudgetPage({
                 </div>
                 <div className="formula-line">
                   <span>
-                    {money(r.amount)} × {r.units} × {ruleDates(r, month).length}{" "}
+                    {r.parts?.length
+                      ? money(occurrenceCost(r))
+                      : `${money(r.amount)} × ${r.units}`}{" "}
+                    × {ruleDates(r, month).length}{" "}
                     {r.frequency === "days" || r.frequency === "daily"
                       ? "days"
                       : "occurrences"}
@@ -590,6 +601,19 @@ export function BudgetPage({
                     <Amount value={ruleTotal(r, month)} />
                   </strong>
                 </div>
+                {r.parts?.length && (
+                  <div className="part-breakdown">
+                    {r.parts.map((part) => (
+                      <span key={part.id}>
+                        <b>{part.name}</b>
+                        <span>
+                          {money(part.amount)}
+                          {part.units > 1 ? ` × ${part.units}` : ""} RWF
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <div className="rule-footer">
                   <button onClick={() => onRule(r)}>
                     Edit schedule

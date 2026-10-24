@@ -16,7 +16,7 @@ export default defineConfig({
         name: "KoraBudget",
         short_name: "KoraBudget",
         description: "Your everyday budget. Free, private and offline.",
-        theme_color: "#123d30",
+        theme_color: "#f7f8f4",
         background_color: "#f7f8f4",
         display: "standalone",
         start_url: "/",

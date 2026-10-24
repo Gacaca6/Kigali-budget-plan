@@ -2,14 +2,7 @@ import { useState } from "react";
 import { ArrowUp, ArrowDown } from "lucide-react";
 import { db, isDate, renameCategory } from "../db";
 import { LocalLottie } from "./Motion";
-import {
-  addMonth,
-  emptyProfile,
-  money,
-  ruleDates,
-  ruleTotal,
-  today,
-} from "../math";
+import { addMonth, emptyProfile, money, today } from "../math";
 import {
   frequencies,
   type Entry,
@@ -21,15 +14,7 @@ import {
   type Snapshot,
   type Wallet,
 } from "../types";
-import {
-  ActionForm,
-  Amount,
-  Field,
-  MoneyInput,
-  WalletLogo,
-  num,
-  text,
-} from "./UI";
+import { ActionForm, Field, MoneyInput, WalletLogo, num, text } from "./UI";
 
 const weekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 export function DayPicker({
@@ -260,7 +245,6 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                 coversMonths: num(f, "months"),
               });
             for (const [key, category, name, units] of [
-              ["ticket", "Transport", "Campus transport", num(f, "trips")],
               ["meal", "Food & groceries", "Campus meals", num(f, "meals")],
             ] as const)
               if (num(f, key) > 0)
@@ -274,6 +258,33 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                   weekdays: days,
                 });
           }
+          if (
+            template === "student" &&
+            (num(f, "outbound") > 0 || num(f, "return") > 0)
+          )
+            rules.push({
+              ...blankSchedule("days", start),
+              id: crypto.randomUUID(),
+              name: "Campus transport",
+              category: "Transport",
+              amount: num(f, "outbound"),
+              units: 1,
+              weekdays: days,
+              parts: [
+                {
+                  id: crypto.randomUUID(),
+                  name: "To campus",
+                  amount: num(f, "outbound"),
+                  units: 1,
+                },
+                {
+                  id: crypto.randomUUID(),
+                  name: "Return home",
+                  amount: num(f, "return"),
+                  units: 1,
+                },
+              ],
+            });
           await db.transaction("rw", db.tables, async () => {
             await db.profiles.put(p);
             await db.rules.bulkPut(rules);
@@ -347,18 +358,11 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
             <p className="field-caption">Which days apply?</p>
             <DayPicker days={days} setDays={setDays} />
             <div className="form-grid">
-              <Field label="Ticket, one way">
-                <MoneyInput name="ticket" required={false} />
+              <Field label="To campus fare">
+                <MoneyInput name="outbound" required={false} />
               </Field>
-              <Field label="Trips each day">
-                <input
-                  name="trips"
-                  type="number"
-                  min={1}
-                  max={100}
-                  defaultValue={2}
-                  required
-                />
+              <Field label="Return home fare">
+                <MoneyInput name="return" required={false} />
               </Field>
               <Field label="Cost per meal">
                 <MoneyInput name="meal" required={false} />
@@ -428,124 +432,6 @@ export function ModePicker({
   );
 }
 
-export function RuleForm({
-  rule,
-  month,
-  profile,
-  onDone,
-}: {
-  rule?: Rule;
-  month: string;
-  profile: Profile;
-  onDone: () => void;
-}) {
-  const [schedule, setSchedule] = useState<Schedule>(
-    rule ||
-      blankSchedule(
-        "once",
-        month === today().slice(0, 7) ? today() : `${month}-01`,
-      ),
-  );
-  const [amount, setAmount] = useState(rule?.amount || 0),
-    [units, setUnits] = useState(rule?.units || 1);
-  const preview: Rule = {
-    ...schedule,
-    id: rule?.id || "",
-    name: "",
-    category: "Other",
-    amount,
-    units,
-  };
-  const count = ruleDates(preview, month).length;
-  return (
-    <ActionForm
-      button={rule ? "Save changes" : "Add to my plan"}
-      onSubmit={async (f) => {
-        validateSchedule(schedule);
-        if (!text(f, "name")) throw new Error("Give this expense a name.");
-        await db.rules.put({
-          ...preview,
-          id: rule?.id || crypto.randomUUID(),
-          name: text(f, "name"),
-          category: text(f, "category"),
-        });
-        onDone();
-      }}
-    >
-      <Field label="Expense name">
-        <input
-          name="name"
-          defaultValue={rule?.name}
-          maxLength={80}
-          placeholder="e.g. Rent, groceries, transport"
-          required
-        />
-      </Field>
-      <Field label="Category">
-        <select
-          name="category"
-          defaultValue={rule?.category || profile.categories[0]}
-        >
-          {profile.categories.map((c) => (
-            <option key={c}>{c}</option>
-          ))}
-        </select>
-      </Field>
-      <Field label="Amount">
-        <span className="money-input">
-          <input
-            aria-label="Amount"
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={1e12}
-            step={1}
-            value={amount || ""}
-            onChange={(e) => setAmount(Number(e.target.value))}
-            required
-          />
-          <span aria-hidden="true">RWF</span>
-        </span>
-      </Field>
-      <ScheduleFields value={schedule} onChange={setSchedule} />
-      <details className="form-details" open={units !== 1 ? true : undefined}>
-        <summary>Use a quantity (optional)</summary>
-        <Field
-          label="Quantity per occurrence"
-          hint="For example: two one-way tickets, or three items."
-        >
-          <input
-            type="number"
-            min={1}
-            max={100}
-            step={1}
-            value={units}
-            onChange={(e) => setUnits(Number(e.target.value))}
-            required
-          />
-        </Field>
-      </details>
-      <div className="calculation">
-        <span>This month’s calculation</span>
-        <p>
-          {money(amount)} × {units} × {count}{" "}
-          {schedule.frequency === "days" || schedule.frequency === "daily"
-            ? "days"
-            : "occurrences"}
-        </p>
-        <strong>
-          <Amount value={ruleTotal(preview, month)} />
-        </strong>
-      </div>
-      {rule && (
-        <p className="hint">
-          Editing this schedule recalculates earlier plans. Recorded
-          transactions stay unchanged.
-        </p>
-      )}
-    </ActionForm>
-  );
-}
 const incomeKinds = [
   "Salary",
   "Business",
@@ -737,17 +623,21 @@ export function PlanningForm({
 export function EntryForm({
   data,
   entry,
+  initialType,
   onDone,
 }: {
   data: Snapshot;
   entry?: Entry;
+  initialType?: Entry["type"];
   onDone: () => void;
 }) {
   const p = data.profile!;
-  const [type, setType] = useState<Entry["type"]>(entry?.type || "expense"),
+  const [type, setType] = useState<Entry["type"]>(
+      entry?.type || initialType || "expense",
+    ),
     [choice, setChoice] = useState(
       entry?.ruleId
-        ? `rule:${entry.ruleId}`
+        ? `rule:${entry.ruleId}${entry.partId ? `:${entry.partId}` : ""}`
         : `cat:${entry?.category || p.categories[0]}`,
     ),
     [sourceId, setSourceId] = useState(entry?.sourceId || "");
@@ -759,8 +649,12 @@ export function EntryForm({
       entry?.budgetMonth || entry?.date.slice(0, 7) || today().slice(0, 7),
     );
   const rule = choice.startsWith("rule:")
-    ? data.rules.find((r) => r.id === choice.slice(5))
+    ? data.rules.find((r) => r.id === choice.split(":")[1])
     : undefined;
+  const selectedPartId = choice.startsWith("rule:")
+    ? choice.split(":")[2]
+    : undefined;
+  const part = rule?.parts?.find((p) => p.id === selectedPartId);
   const category = rule?.category || choice.slice(4);
   return (
     <ActionForm
@@ -790,8 +684,15 @@ export function EntryForm({
               ? "Income received"
               : type === "transfer"
                 ? "Wallet transfer"
-                : rule?.name || category),
-          ...(type === "expense" && rule ? { ruleId: rule.id } : {}),
+                : part
+                  ? `${rule?.name} · ${part.name}`
+                  : rule?.name || category),
+          ...(type === "expense" && rule
+            ? {
+                ruleId: rule.id,
+                ...(selectedPartId ? { partId: selectedPartId } : {}),
+              }
+            : {}),
           ...(type === "income"
             ? {
                 ...(sourceId ? { sourceId } : {}),
@@ -824,20 +725,41 @@ export function EntryForm({
               setChoice(e.target.value);
               if (e.target.value.startsWith("rule:")) {
                 const r = data.rules.find(
-                  (r) => r.id === e.target.value.slice(5),
+                  (r) => r.id === e.target.value.split(":")[1],
                 )!;
-                setAmount(r.amount);
-                setNote(r.name);
+                const selected = r.parts?.find(
+                  (p) => p.id === e.target.value.split(":")[2],
+                );
+                setAmount(
+                  selected
+                    ? selected.amount * selected.units
+                    : r.parts?.length
+                      ? r.parts.reduce((sum, p) => sum + p.amount * p.units, 0)
+                      : r.amount,
+                );
+                setNote(selected ? `${r.name} · ${selected.name}` : r.name);
               }
             }}
           >
             {data.rules.length > 0 && (
               <optgroup label="Against a planned cost">
-                {data.rules.map((r) => (
+                {rule && selectedPartId && !part && (
+                  <option value={choice}>{rule.name} · historical item</option>
+                )}
+                {data.rules.flatMap((r) => [
                   <option key={r.id} value={`rule:${r.id}`}>
                     {r.name}
-                  </option>
-                ))}
+                    {r.parts?.length ? " · all items" : ""}
+                  </option>,
+                  ...(r.parts || []).map((p) => (
+                    <option
+                      key={`${r.id}:${p.id}`}
+                      value={`rule:${r.id}:${p.id}`}
+                    >
+                      {r.name} · {p.name}
+                    </option>
+                  )),
+                ])}
               </optgroup>
             )}
             <optgroup label="Additional spending">
@@ -862,10 +784,13 @@ export function EntryForm({
                 setAmount(source.amount);
                 setCovers(source.coversMonths);
                 setNote(source.name);
+              } else {
+                setCovers(1);
+                setBudgetMonth(date.slice(0, 7));
               }
             }}
           >
-            <option value="">Other / one-off income</option>
+            <option value="">Unexpected / one-off income</option>
             {p.sources.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}

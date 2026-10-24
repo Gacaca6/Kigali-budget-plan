@@ -30,6 +30,9 @@ Preview: http://localhost:4173. Serve `dist/` over HTTPS to install on a physica
 - Add, rename and reorder wallets and categories. Renames update existing records atomically.
 - Simple planned costs, with optional quantities, custom dates, recurring intervals and exclusions. Monthly dates preserve the anchor day, clamping to the last day in shorter months.
 - Monthly and yearly views; income, expense and transfer history; savings goals; JSON backup/restore; monthly CSV export.
+- Separate editable amounts within a planned cost, such as outbound and return fares. Record each trip or the whole day; overspending on one trip leaves the other trip's planned fare intact.
+- Add unexpected income directly from Home, then edit it in Activity. One-off receipts do not repeat in future months.
+- Fixed header and navigation, full-width phone and installed-app layouts, iPhone safe-area padding, and keyboard-aware transaction sheets.
 - Green wallet branding throughout, including SVG favicon, Apple touch icon, normal PWA icons and a maskable Android icon.
 - A wallet splash screen, local Lottie illustrations and save feedback, gentle sheet/page transitions and tactile buttons. Reduced-motion preferences disable transitions and show static animation frames. The landing page has no secondary marketing subtitles.
 

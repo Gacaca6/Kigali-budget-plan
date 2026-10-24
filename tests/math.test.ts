@@ -62,6 +62,114 @@ const state = (over: Partial<Snapshot> = {}): Snapshot => ({
   goals: [],
   ...over,
 });
+describe("editable separate prices", () => {
+  const split: Rule = {
+    ...ticket,
+    parts: [
+      { id: "out", name: "Outbound", amount: 500, units: 1 },
+      { id: "back", name: "Return", amount: 800, units: 1 },
+    ],
+  };
+  it("adds different outbound and return fares on actual calendar days", () => {
+    expect(ruleTotal(split, "2026-10")).toBe(28600);
+    expect(
+      ruleTotal(
+        {
+          ...split,
+          parts: split.parts!.map((p) =>
+            p.id === "back" ? { ...p, amount: 1000 } : p,
+          ),
+        },
+        "2026-10",
+      ),
+    ).toBe(33000);
+  });
+  it("does not let an outbound overrun use up the unrecorded return fare", () => {
+    const out = entry({ amount: 700, partId: "out" });
+    expect(forecast([split], [out], "2026-10")).toBe(28800);
+    expect(
+      forecast(
+        [split],
+        [out, entry({ id: "back", amount: 800, partId: "back" })],
+        "2026-10",
+      ),
+    ).toBe(28800);
+  });
+  it("supports full-day receipts and mixtures without counting twice", () => {
+    expect(forecast([split], [entry({ amount: 1300 })], "2026-10")).toBe(28600);
+    expect(
+      forecast(
+        [split],
+        [
+          entry({ amount: 500, partId: "out" }),
+          entry({ id: "return", amount: 800 }),
+        ],
+        "2026-10",
+      ),
+    ).toBe(28600);
+  });
+  it("supports editable quantities and a free direction", () => {
+    expect(
+      ruleTotal(
+        {
+          ...split,
+          parts: [
+            { id: "out", name: "Walk out", amount: 0, units: 1 },
+            { id: "back", name: "Back", amount: 800, units: 1 },
+          ],
+        },
+        "2026-10",
+      ),
+    ).toBe(17600);
+    expect(
+      ruleTotal(
+        { ...split, parts: split.parts!.map((p) => ({ ...p, units: 2 })) },
+        "2026-10",
+      ),
+    ).toBe(57200);
+  });
+  it("retains component receipts when the plan returns to a single amount", () => {
+    expect(
+      forecast(
+        [{ ...ticket, amount: 1300, units: 1 }],
+        [
+          entry({ amount: 500, partId: "out" }),
+          entry({ id: "back", amount: 800, partId: "back" }),
+        ],
+        "2026-10",
+      ),
+    ).toBe(28600);
+  });
+  it("backs up separate amounts and links, and rejects invalid parts", () => {
+    const b: Backup = {
+      ...state({ rules: [split], entries: [entry({ partId: "out" })] }),
+      version: 2,
+      exportedAt: "",
+    };
+    expect(validateBackup(b).rules[0].parts).toHaveLength(2);
+    expect(() =>
+      validateBackup({
+        ...b,
+        rules: [
+          {
+            ...split,
+            parts: [{ id: "bad", name: "Bad", amount: -1, units: 1 }],
+          },
+        ],
+      }),
+    ).toThrow();
+  });
+  it("recalculates an unexpected receipt after editing or removing it", () => {
+    const data = state({
+      entries: [entry({ type: "income", ruleId: undefined, amount: 5000 })],
+    });
+    expect(budgetSummary(data, "2026-10").available).toBe(45000);
+    data.entries[0].amount = 8000;
+    expect(budgetSummary(data, "2026-10").available).toBe(48000);
+    data.entries = [];
+    expect(budgetSummary(data, "2026-10").available).toBe(40000);
+  });
+});
 describe("exact calendar recurrences", () => {
   it("calculates the original student example on actual weekdays", () => {
     const meal = {

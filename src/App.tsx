@@ -39,10 +39,10 @@ import {
   GoalForm,
   Onboarding,
   PlanningForm,
-  RuleForm,
   SourceForm,
   WalletForm,
 } from "./components/Forms";
+import { RuleForm } from "./components/RuleForm";
 import {
   ActivityPage,
   BudgetPage,
@@ -54,7 +54,7 @@ import {
 type Tab = "Home" | "Budget" | "Activity" | "Goals";
 type Modal =
   | { kind: "rule"; rule?: Rule }
-  | { kind: "entry"; entry?: Entry }
+  | { kind: "entry"; entry?: Entry; initialType?: Entry["type"] }
   | { kind: "goal"; goal?: Goal }
   | { kind: "source"; source?: IncomeSource }
   | { kind: "wallet"; wallet?: WalletType }
@@ -115,6 +115,28 @@ export default function App() {
       return () => clearTimeout(id);
     }
   }, [toast]);
+  useEffect(() => {
+    const update = () => {
+      const viewport = window.visualViewport;
+      document.documentElement.style.setProperty(
+        "--visible-height",
+        `${viewport?.height || window.innerHeight}px`,
+      );
+      document.documentElement.style.setProperty(
+        "--keyboard-inset",
+        `${Math.max(0, window.innerHeight - ((viewport?.height || window.innerHeight) + (viewport?.offsetTop || 0)))}px`,
+      );
+    };
+    update();
+    window.visualViewport?.addEventListener("resize", update);
+    window.addEventListener("resize", update);
+    return () => {
+      window.visualViewport?.removeEventListener("resize", update);
+      window.removeEventListener("resize", update);
+      document.documentElement.style.removeProperty("--visible-height");
+      document.documentElement.style.removeProperty("--keyboard-inset");
+    };
+  }, []);
   const close = () => setModal(null),
     done = () => {
       setModal(null);
@@ -229,6 +251,7 @@ export default function App() {
           .filter((e) => e.ruleId === m.id)
           .modify((e) => {
             delete e.ruleId;
+            delete e.partId;
           });
       });
     else
@@ -246,7 +269,7 @@ export default function App() {
     done();
   }
   return (
-    <div className={`app-shell ${hidden ? "privacy-mode" : ""}`}>
+    <div className={`app-shell app-active ${hidden ? "privacy-mode" : ""}`}>
       <header className="app-header">
         <div className="brand">
           <WalletLogo />
@@ -356,6 +379,9 @@ export default function App() {
             hidden={hidden}
             setHidden={setHidden}
             onRecord={() => setModal({ kind: "entry" })}
+            onUnexpected={() =>
+              setModal({ kind: "entry", initialType: "income" })
+            }
             onRule={(rule) => setModal({ kind: "rule", rule })}
             onGoal={() => setModal({ kind: "goal" })}
             onBudget={() => navigate("Budget")}
@@ -490,7 +516,12 @@ export default function App() {
             />
           )}
           {modal.kind === "entry" && (
-            <EntryForm data={data} entry={modal.entry} onDone={done} />
+            <EntryForm
+              data={data}
+              entry={modal.entry}
+              initialType={modal.initialType}
+              onDone={done}
+            />
           )}
           {modal.kind === "goal" && (
             <GoalForm goal={modal.goal} onDone={done} />

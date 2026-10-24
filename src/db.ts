@@ -232,6 +232,21 @@ export function validateBackup(input: unknown): Backup {
         !amount(r.units) ||
         r.units < 1 ||
         r.units > 100 ||
+        (r.parts !== undefined &&
+          (!Array.isArray(r.parts) ||
+            r.parts.length < 1 ||
+            r.parts.length > 20 ||
+            r.parts.some(
+              (p) =>
+                !obj(p) ||
+                !name(p.id) ||
+                !name(p.name) ||
+                !amount(p.amount) ||
+                !amount(p.units) ||
+                p.units < 1 ||
+                p.units > 100,
+            ) ||
+            new Set(r.parts.map((p) => p.id)).size !== r.parts.length)) ||
         r.frequency === "irregular" ||
         !validSchedule(r),
     )
@@ -253,6 +268,7 @@ export function validateBackup(input: unknown): Backup {
         (e.createdAt !== undefined &&
           (!Number.isSafeInteger(e.createdAt) || e.createdAt < 0)) ||
         (e.ruleId !== undefined && !rules.has(e.ruleId)) ||
+        (e.partId !== undefined && (!name(e.partId) || !e.ruleId)) ||
         (e.sourceId !== undefined && !sources.has(e.sourceId)) ||
         (e.needsSourceReview !== undefined &&
           typeof e.needsSourceReview !== "boolean") ||

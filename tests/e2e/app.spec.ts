@@ -1,4 +1,122 @@
 import { test, expect, type Page } from "@playwright/test";
+test("different fares, per-trip spending, editable prices and unexpected income", async ({
+  page,
+}) => {
+  await blank(page);
+  await page.getByRole("button", { name: "Plan a cost", exact: true }).click();
+  await page.getByLabel("Expense name").fill("Commute");
+  await page.getByLabel("Use separate amounts").check();
+  await page.getByLabel("Outbound amount", { exact: true }).fill("500");
+  await page.getByLabel("Return amount", { exact: true }).fill("800");
+  await page.getByLabel("How often?").selectOption("days");
+  await page.getByText("Dates & exceptions", { exact: true }).click();
+  await page.getByLabel("Start date", { exact: true }).fill("2026-10-01");
+  await expect(page.locator(".calculation")).toContainText("28,600");
+  await page.getByRole("button", { name: "Add to my plan" }).click();
+  await page
+    .getByRole("button", { name: "Add unexpected income", exact: true })
+    .click();
+  await expect(page.getByLabel("Income source", { exact: true })).toHaveValue(
+    "",
+  );
+  await page.getByLabel("Amount", { exact: true }).fill("40000");
+  await page.getByLabel("Note (optional)").fill("Unexpected gift");
+  await page.getByRole("button", { name: "Save transaction" }).click();
+  await expect(page.locator(".hero-amount")).toContainText("11,400");
+  await record(page);
+  await page
+    .getByLabel("Category or planned cost")
+    .selectOption({ label: "Commute · Outbound" });
+  await page.getByLabel("Amount", { exact: true }).fill("700");
+  await page.getByLabel("Date", { exact: true }).fill("2026-10-01");
+  await page.getByRole("button", { name: "Save transaction" }).click();
+  await expect(page.locator(".hero-amount")).toContainText("11,200");
+  await record(page);
+  await page
+    .getByLabel("Category or planned cost")
+    .selectOption({ label: "Commute · Return" });
+  await page.getByLabel("Date", { exact: true }).fill("2026-10-01");
+  await page.getByRole("button", { name: "Save transaction" }).click();
+  await expect(page.locator(".hero-amount")).toContainText("11,200");
+  await expect(page.locator(".actual-balance")).toContainText("38,500");
+  await page.getByRole("button", { name: "Budget", exact: true }).click();
+  await page.getByRole("button", { name: "Edit Commute" }).click();
+  await page.getByLabel("Return amount", { exact: true }).fill("1000");
+  await expect(page.locator(".calculation")).toContainText("33,000");
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await page.getByRole("button", { name: "Home", exact: true }).click();
+  await expect(page.locator(".hero-amount")).toContainText("6,800");
+  await expect(page.locator(".actual-balance")).toContainText("38,500");
+  await page.getByRole("button", { name: "Activity", exact: true }).click();
+  await page.getByRole("button", { name: /^Unexpected gift / }).click();
+  await page.getByLabel("Amount", { exact: true }).fill("45000");
+  await page.getByRole("button", { name: "Save transaction" }).click();
+  await page.getByRole("button", { name: "Home", exact: true }).click();
+  await expect(page.locator(".hero-amount")).toContainText("11,800");
+  await expect(page.locator(".actual-balance")).toContainText("43,500");
+  await page.screenshot({
+    path: "artifacts/different-fares-home.png",
+    fullPage: true,
+  });
+});
+test("header and bottom bar stay fixed and mobile screens fill edge to edge", async ({
+  page,
+}) => {
+  await blank(page);
+  for (const [width, height] of [
+    [320, 568],
+    [375, 667],
+    [390, 844],
+    [430, 932],
+    [540, 960],
+    [932, 430],
+  ]) {
+    await page.setViewportSize({ width, height });
+    await page.evaluate(() => scrollTo(0, 0));
+    const initial = await page.evaluate(() => {
+      const shell = document
+        .querySelector(".app-shell")!
+        .getBoundingClientRect();
+      const header = document
+        .querySelector(".app-header")!
+        .getBoundingClientRect();
+      const title = document
+        .querySelector(".page-heading")!
+        .getBoundingClientRect();
+      return {
+        width: shell.width,
+        height: shell.height,
+        top: header.top,
+        below: title.top >= header.bottom,
+        background: getComputedStyle(document.documentElement).backgroundColor,
+        shellBackground: getComputedStyle(document.querySelector(".app-shell")!)
+          .backgroundColor,
+      };
+    });
+    expect(initial.width).toBe(width);
+    expect(initial.height).toBeGreaterThanOrEqual(height);
+    expect(initial.top).toBe(0);
+    expect(initial.below).toBe(true);
+    expect(initial.background).toBe(initial.shellBackground);
+    await page.evaluate(() => scrollTo(0, 500));
+    const fixed = await page.evaluate(() => ({
+      header: document.querySelector(".app-header")!.getBoundingClientRect()
+        .top,
+      bottom: document.querySelector(".bottom-nav")!.getBoundingClientRect()
+        .bottom,
+      navWidth: document.querySelector(".bottom-nav")!.getBoundingClientRect()
+        .width,
+      overflow: document.documentElement.scrollWidth > innerWidth,
+    }));
+    expect(fixed.header).toBe(0);
+    expect(fixed.bottom).toBe(height);
+    expect(fixed.navWidth).toBe(width);
+    expect(fixed.overflow).toBe(false);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => scrollTo(0, 350));
+  await page.screenshot({ path: "artifacts/fixed-header-phone.png" });
+});
 test("wallet splash transitions into a subtitle-free landing page", async ({
   page,
 }) => {
@@ -87,7 +205,8 @@ test("optional student template, schedules, transfers, backups and offline resta
   await page.getByRole("button", { name: /Student template/ }).click();
   await page.getByLabel("Bursary amount (optional)").fill("80000");
   await page.getByLabel("Payment covers", { exact: true }).selectOption("2");
-  await page.getByLabel("Ticket, one way").fill("500");
+  await page.getByLabel("To campus fare").fill("500");
+  await page.getByLabel("Return home fare").fill("500");
   await page.getByLabel("Cost per meal").fill("700");
   await page
     .getByText("Have money to start with? (optional)", { exact: true })
@@ -100,7 +219,7 @@ test("optional student template, schedules, transfers, backups and offline resta
   await page.getByRole("button", { name: "Budget", exact: true }).click();
   await expect(
     page.locator(".rule-card").filter({ hasText: "Campus transport" }),
-  ).toContainText("500 × 2 × 22 days");
+  ).toContainText("1,000 × 22 days");
   await page.getByRole("button", { name: "Edit Campus transport" }).click();
   await page.getByText("Dates & exceptions", { exact: true }).click();
   await page.getByLabel("Skip dates (optional)").fill("2026-10-26");
@@ -113,7 +232,7 @@ test("optional student template, schedules, transfers, backups and offline resta
   await record(page);
   await page
     .getByLabel("Category or planned cost")
-    .selectOption({ label: "Campus transport" });
+    .selectOption({ label: "Campus transport · To campus" });
   await page.getByLabel("Amount", { exact: true }).fill("500");
   await page.getByLabel("Date", { exact: true }).fill("2026-10-01");
   await page.getByRole("button", { name: "Save transaction" }).click();
@@ -311,6 +430,6 @@ test("green wallet branding, optional setup and phone canvas at every width", as
       await page
         .locator(".app-shell")
         .evaluate((el) => el.getBoundingClientRect().width),
-    ).toBeLessThanOrEqual(480);
+    ).toBe(width);
   }
 });
