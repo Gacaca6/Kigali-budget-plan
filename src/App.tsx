@@ -287,7 +287,10 @@ export default function App() {
           {(profile.name[0] || "K").toUpperCase()}
         </button>
       </header>
-      <main className="main-content motion-page" key={tab}>
+      <main
+        className={`main-content motion-page ${tab === "Home" ? "home-content" : ""}`}
+        key={tab}
+      >
         {updateAvailable && (
           <div className="update-banner">
             <span>A fresh version is ready.</span>
@@ -378,7 +381,6 @@ export default function App() {
         )}
         {tab === "Home" && (
           <HomePage
-            onBuild={() => setModal({ kind: "builder" })}
             data={data}
             month={month}
             hidden={hidden}

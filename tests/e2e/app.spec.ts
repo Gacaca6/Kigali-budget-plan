@@ -9,6 +9,10 @@ test("guided budget can be rebuilt after deletion without losing recorded money"
   await page.getByLabel("Amount", { exact: true }).fill("80000");
   await page.getByLabel("Note (optional)").fill("Money already received");
   await page.getByRole("button", { name: "Save transaction" }).click();
+  await expect(
+    page.getByRole("button", { name: "Build a budget", exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Budget", exact: true }).click();
   await page
     .getByRole("button", { name: "Build a budget", exact: true })
     .click();
@@ -67,6 +71,7 @@ test("guided budget can be rebuilt after deletion without losing recorded money"
     .toBe(true);
   await context.setOffline(true);
   await page.reload();
+  await page.getByRole("button", { name: "Budget", exact: true }).click();
   await page
     .getByRole("button", { name: "Build a budget", exact: true })
     .click();
@@ -208,6 +213,24 @@ test("header and bottom bar stay fixed and mobile screens fill edge to edge", as
     expect(initial.top).toBe(0);
     expect(initial.below).toBe(true);
     expect(initial.background).toBe(initial.shellBackground);
+    if (height >= 568) {
+      const overview = await page.evaluate(() => ({
+        top: document.querySelector(".balance-card")!.getBoundingClientRect()
+          .top,
+        bottom: document.querySelector(".balance-card")!.getBoundingClientRect()
+          .bottom,
+        headerBottom: document
+          .querySelector(".app-header")!
+          .getBoundingClientRect().bottom,
+        navTop: document.querySelector(".bottom-nav")!.getBoundingClientRect()
+          .top,
+      }));
+      expect(overview.top).toBeGreaterThanOrEqual(overview.headerBottom);
+      expect(overview.bottom).toBeLessThanOrEqual(overview.navTop);
+      await expect(
+        page.getByRole("button", { name: "Build a budget", exact: true }),
+      ).toHaveCount(0);
+    }
     await page.evaluate(() => scrollTo(0, 500));
     const fixed = await page.evaluate(() => ({
       header: document.querySelector(".app-header")!.getBoundingClientRect()
@@ -224,7 +247,7 @@ test("header and bottom bar stay fixed and mobile screens fill edge to edge", as
     expect(fixed.overflow).toBe(false);
   }
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.evaluate(() => scrollTo(0, 350));
+  await page.evaluate(() => scrollTo(0, 0));
   await page.screenshot({ path: "artifacts/fixed-header-phone.png" });
 });
 test("wallet splash transitions into a subtitle-free landing page", async ({

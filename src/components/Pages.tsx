@@ -139,7 +139,6 @@ function BudgetGuide({
   );
 }
 type OverviewProps = {
-  onBuild: () => void;
   data: Snapshot;
   month: string;
   onRecord: () => void;
@@ -155,7 +154,6 @@ type OverviewProps = {
   setHidden: (b: boolean) => void;
 };
 export function HomePage({
-  onBuild,
   data,
   month,
   onRecord,
@@ -176,16 +174,6 @@ export function HomePage({
     entries = sortedEntries(data, month);
   return (
     <>
-      <BudgetGuide onBuild={onBuild} empty={!rules.length} />
-      <section className="actual-balance">
-        <span>
-          <ShieldCheck size={15} />
-          Actual money now<small>Recorded wallet balances · {today()}</small>
-        </span>
-        <strong className="private-value">
-          <Amount value={s.balance} />
-        </strong>
-      </section>
       <section
         className={`balance-card ${s.remaining < 0 ? "over-budget" : ""}`}
       >
@@ -243,6 +231,15 @@ export function HomePage({
           <span />
           <span />
         </div>
+      </section>
+      <section className="actual-balance">
+        <span>
+          <ShieldCheck size={15} />
+          Actual money now<small>Recorded wallet balances · {today()}</small>
+        </span>
+        <strong className="private-value">
+          <Amount value={s.balance} />
+        </strong>
       </section>
       <div className="funding-breakdown">
         <span>

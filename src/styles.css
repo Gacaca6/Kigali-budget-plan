@@ -2253,6 +2253,28 @@ body {
   padding-right: max(25px, env(safe-area-inset-right, 0px));
   padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
 }
+.home-content .page-heading {
+  margin: 8px 0 12px;
+}
+.home-content .page-heading .eyebrow,
+.home-content .page-subtitle {
+  display: none;
+}
+.home-content .page-heading h1 {
+  font-size: 25px;
+}
+.home-content .balance-card {
+  padding: 18px;
+}
+.home-content .hero-amount {
+  font-size: 42px;
+}
+.home-content .balance-divider {
+  margin: 14px 0 12px;
+}
+.home-content .actual-balance {
+  margin-top: 14px;
+}
 .budget-guide {
   border: 1px solid #dce7ce;
   background: #eaf1de;
